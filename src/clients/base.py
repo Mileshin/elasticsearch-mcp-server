@@ -3,9 +3,21 @@ import logging
 import warnings
 from typing import Dict
 
-from elasticsearch import Elasticsearch
+from elasticsearch import Elasticsearch, UnsupportedProductError
 import httpx
 from opensearchpy import OpenSearch
+
+# Patch Elasticsearch to ignore UnsupportedProductError
+from elasticsearch.client import Client as _Client
+_orig = _Client.verify_with_version_or_header
+def _patched_verify(self, *args, **kwargs):
+    try:
+        return _orig(self, *args, **kwargs)
+    except UnsupportedProductError as e:
+        print(f"Ignoring product check: {e}")
+        return
+
+_Client.verify_with_version_or_header = _patched_verify
 
 class SearchClientBase(ABC):
     def __init__(self, config: Dict, engine_type: str):
